@@ -1,14 +1,12 @@
-# Use a lightweight OpenJDK base
-FROM eclipse-temurin:17-jdk-alpine
-
-# Create app directory
+# Stage 1: build the Spring Boot project
+FROM eclipse-temurin:17-jdk-alpine AS builder
 WORKDIR /app
+COPY . .
+RUN chmod +x gradlew && ./gradlew build -x test
 
-# Copy the fat JAR you build into the image
-COPY build/libs/securevault-0.0.1-SNAPSHOT.jar app.jar
-
-# Expose the port your Spring app listens on
+# Stage 2: run the app
+FROM eclipse-temurin:17-jdk-alpine
+WORKDIR /app
+COPY --from=builder /app/build/libs/securevault-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8080
-
-# Run the JAR
-ENTRYPOINT ["java","-jar","app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
