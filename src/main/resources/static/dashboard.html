@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Secure File Vault - Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <style>
+    body {
+      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+      color: #fff;
+      min-height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .navbar {
+      background-color: #1c1f2e;
+    }
+    .container {
+      margin-top: 4rem;
+    }
+    .file-card, .folder-card {
+      background-color: #2d3548;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      transition: transform 0.2s, background-color 0.3s;
+    }
+    .file-card:hover, .folder-card:hover {
+      transform: scale(1.02);
+      background-color: #384054;
+      cursor: pointer;
+    }
+    footer {
+      padding: 1rem;
+      background-color: #1c1f2e;
+      text-align: center;
+      color: #aaa;
+      margin-top: 4rem;
+    }
+    .toast-container {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+    }
+    .favorite-btn {
+      background-color: transparent;
+      border: none;
+      color: #ffc107;
+      font-size: 1.2rem;
+    }
+    .favorite-btn:hover {
+      color: gold;
+      text-shadow: 0 0 6px yellow;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark px-4">
+    <a class="navbar-brand" href="/dashboard.html">🔐 Secure File Vault</a>
+    <div class="collapse navbar-collapse">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link" href="/dashboard.html">📂 My Files</a></li>
+        <li class="nav-item"><a class="nav-link" href="/folder.html?username=harsha">📁 My Folders</a></li>
+        <li class="nav-item"><a class="nav-link" href="/about.html">📘 About</a></li>
+        <li class="nav-item"><a class="nav-link" href="/resume.html">📄 Resume</a></li>
+      </ul>
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="/index.html">🚪 Logout</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h3 class="text-center mb-4">Upload & Manage Your Encrypted Files</h3>
+
+    <div class="row mb-3">
+      <div class="col-md-8">
+        <div class="input-group">
+          <input type="file" class="form-control" id="fileInput" title="Choose a file to upload">
+          <select class="form-select" id="folderSelect" title="Select a folder">
+            <option value="">📁 No Folder</option>
+          </select>
+          <button class="btn btn-success" onclick="uploadFile()">Upload 🔐</button>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="input-group">
+          <input type="text" class="form-control" id="newFolderName" placeholder="Enter new folder name" />
+          <button class="btn btn-outline-info" onclick="createFolder()">➕ Create Folder</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-group mb-4">
+      <input type="text" class="form-control" id="searchInput" placeholder="🔍 Search files by name..." oninput="fetchFiles()" />
+    </div>
+
+    <div class="mb-4">
+      <h5>📁 Your Folders</h5>
+      <div id="folderList"></div>
+    </div>
+
+    <h5 class="mb-3">🗂 Files</h5>
+    <div id="fileList"></div>
+  </div>
+
+  <footer>
+    <p class="mb-0">© 2025 SecureVault | Built with ❤️ by Harsha</p>
+  </footer>
+
+  <div class="toast-container"></div>
+
+  <script>
+    const username = "harsha";
+
+    function showToast(message, success = true) {
+      const toast = document.createElement("div");
+      toast.className = `toast align-items-center text-white bg-${success ? 'success' : 'danger'} border-0 show mb-2`;
+      toast.setAttribute("role", "alert");
+      toast.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body">${message}</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      `;
+      document.querySelector(".toast-container").appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    async function fetchFolders() {
+      const res = await fetch(`/api/folders?username=${username}`);
+      const folders = await res.json();
+      const folderList = document.getElementById("folderList");
+      const folderSelect = document.getElementById("folderSelect");
+
+      folderList.innerHTML = "";
+      folderSelect.innerHTML = '<option value="">📁 No Folder</option>';
+
+      folders.forEach(folder => {
+        const card = document.createElement("div");
+        card.className = "folder-card d-flex justify-content-between align-items-center";
+        card.innerHTML = `
+          <div>
+            <strong>📁 <a href="/folder.html?username=${username}&folder=${encodeURIComponent(folder)}" style="text-decoration:none;color:white">${folder}</a></strong>
+          </div>
+        `;
+        folderList.appendChild(card);
+
+        const option = document.createElement("option");
+        option.value = folder;
+        option.text = folder;
+        folderSelect.appendChild(option);
+      });
+    }
+
+    async function createFolder() {
+      const name = document.getElementById("newFolderName").value;
+      if (!name.trim()) return showToast("Please enter a folder name.", false);
+
+      const res = await fetch("/api/folders", {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, folder: name })
+      });
+
+      const result = await res.text();
+      showToast(result, result.toLowerCase().includes("success"));
+      document.getElementById("newFolderName").value = "";
+      fetchFolders();
+    }
+
+    async function fetchFiles() {
+      const search = document.getElementById("searchInput").value.toLowerCase();
+      const res = await fetch(`/api/files?username=${username}`);
+      const files = await res.json();
+      const fileList = document.getElementById("fileList");
+      fileList.innerHTML = "";
+
+      const filteredFiles = files.filter(f => f.originalFilename.toLowerCase().includes(search));
+
+      if (filteredFiles.length === 0) {
+        fileList.innerHTML = "<p>No files found.</p>";
+        return;
+      }
+
+      filteredFiles.forEach(file => {
+        const card = document.createElement("div");
+        card.className = "file-card d-flex justify-content-between align-items-start flex-wrap";
+
+        const sizeKB = file.size ? (file.size / 1024).toFixed(2) : "N/A";
+        const uploadedAt = file.uploadedAt ? new Date(file.uploadedAt).toLocaleString() : "N/A";
+        const isFav = file.favorite === true;
+
+        card.innerHTML = `
+          <div>
+            <strong>${file.originalFilename}</strong><br/>
+            <small>Size: ${sizeKB} KB | Uploaded: ${uploadedAt}</small><br/>
+            <small>📁 Folder: ${file.folder || 'None'}</small>
+          </div>
+          <div class="mt-2">
+            <a href="/api/files/download/${file.id}" class="btn btn-sm btn-outline-primary me-1" title="Download">⬇️</a>
+            <button class="btn btn-sm btn-outline-danger me-1" onclick="deleteFile('${file.id}')" title="Delete">🗑️</button>
+            <button class="favorite-btn" onclick="toggleFavorite('${file.id}')" title="Favorite">
+              ${isFav ? '⭐' : '☆'}
+            </button>
+          </div>
+        `;
+        fileList.appendChild(card);
+      });
+    }
+
+    async function deleteFile(fileId) {
+      const res = await fetch(`/api/files/${fileId}`, { method: "DELETE" });
+      const result = await res.text();
+      showToast(result, true);
+      fetchFiles();
+    }
+
+    async function toggleFavorite(fileId) {
+      const res = await fetch(`/api/files/favorite/${fileId}`, { method: "PATCH" });
+      const result = await res.text();
+      showToast(result);
+      fetchFiles();
+    }
+
+    async function uploadFile() {
+      const fileInput = document.getElementById("fileInput");
+      const file = fileInput.files[0];
+      const folder = document.getElementById("folderSelect").value;
+
+      if (!file) return showToast("Please choose a file to upload.", false);
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("username", username);
+      formData.append("folder", folder);
+
+      const res = await fetch("/api/files/upload", {
+        method: "POST",
+        body: formData
+      });
+
+      const result = await res.text();
+      showToast(result, result.toLowerCase().includes("success"));
+      fetchFiles();
+    }
+
+    window.onload = () => {
+      fetchFiles();
+      fetchFolders();
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureVault - Register</title>
+</head>
+<body>
+    <h2>User Registration</h2>
+    <form id="registerForm">
+        <label>Username:</label><br>
+        <input type="text" id="username" title="Enter your username" placeholder="Username"><br><br>
+
+        <label>Password:</label><br>
+        <input type="password" id="password" title="Enter your password" placeholder="Password"><br><br>
+
+        <button type="submit">Register</button>
+    </form>
+
+    <p id="result"></p>
+
+    <script>
+        document.getElementById("registerForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            fetch("/api/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById("result").innerText = data;
+            })
+            .catch(error => {
+                document.getElementById("result").innerText = "Error: " + error;
+            });
+        });
+    </script>
+</body>
+</html>
